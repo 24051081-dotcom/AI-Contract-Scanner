@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Contract Risk Scanner</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f2f5; color: #1a1a1a; min-height: 100vh; }
+    .container { max-width: 780px; margin: 0 auto; padding: 2rem 1rem; }
+    .hero { text-align: center; margin-bottom: 2rem; }
+    .hero h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+    .hero p { color: #666; font-size: 16px; }
+    .badge { display: inline-block; background: #e8f5e9; color: #2e7d32; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-bottom: 12px; }
+    .card { background: #fff; border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    textarea { width: 100%; min-height: 180px; padding: 14px; font-size: 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; background: #fafafa; resize: vertical; line-height: 1.6; transition: border 0.2s; }
+    textarea:focus { outline: none; border-color: #1a1a1a; background: #fff; }
+    .btn-scan { margin-top: 12px; width: 100%; padding: 14px; font-size: 16px; font-weight: 700; background: #1a1a1a; color: #fff; border: none; border-radius: 10px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; }
+    .btn-scan:hover { background: #333; transform: translateY(-1px); }
+    .btn-scan:disabled { background: #999; cursor: not-allowed; transform: none; }
+    .loading { text-align: center; padding: 2rem; display: none; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #eee; border-top-color: #1a1a1a; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .results { display: none; }
+    .score-section { display: flex; align-items: center; gap: 1.5rem; }
+    .score-ring { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .score-ring .score-num { font-size: 26px; font-weight: 700; }
+    .score-ring .score-label { font-size: 10px; color: #888; }
+    .score-details h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .score-details p { font-size: 14px; color: #666; margin-bottom: 8px; }
+    .verdict { display: inline-block; font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; }
+    .summary-box { background: #f8f9ff; border-left: 4px solid #5c6bc0; border-radius: 0 10px 10px 0; padding: 14px 16px; margin-top: 1rem; font-size: 14px; line-height: 1.7; color: #333; }
+    .summary-box strong { display: block; margin-bottom: 4px; color: #5c6bc0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .section-label { font-size: 13px; font-weight: 700; margin: 1.25rem 0 8px; display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .risk-item { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; border-left: 4px solid transparent; transition: box-shadow 0.2s; }
+    .risk-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .risk-item.high { border-left-color: #e53e3e; }
+    .risk-item.medium { border-left-color: #dd6b20; }
+    .risk-item.low { border-left-color: #38a169; }
+    .risk-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .risk-title { font-size: 15px; font-weight: 600; }
+    .btn-negotiate { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; border: 1.5px solid #5c6bc0; color: #5c6bc0; background: transparent; cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+    .btn-negotiate:hover { background: #5c6bc0; color: #fff; }
+    .risk-desc { font-size: 13px; color: #555; margin-top: 6px; line-height: 1.5; }
+    .negotiate-result { margin-top: 10px; background: #f0f4ff; border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.6; color: #333; display: none; }
+    .negotiate-result strong { color: #5c6bc0; display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; }
+    .suggestion { background: #fff8e1; border-left: 4px solid #f59e0b; border-radius: 0 10px 10px 0; padding: 14px 16px; margin-top: 1rem; font-size: 14px; line-height: 1.6; }
+    .suggestion strong { color: #b45309; display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; font-weight: 700; }
+    .error { color: #e53e3e; font-size: 14px; margin-top: 8px; display: none; }
+    .stats-row { display: flex; gap: 12px; margin-top: 1rem; }
+    .stat { flex: 1; text-align: center; padding: 12px; border-radius: 10px; }
+    .stat .num { font-size: 22px; font-weight: 700; }
+    .stat .lbl { font-size: 12px; margin-top: 2px; }
+    .stat.high { background: #fff5f5; } .stat.high .num { color: #c53030; } .stat.high .lbl { color: #c53030; }
+    .stat.medium { background: #fffaf0; } .stat.medium .num { color: #c05621; } .stat.medium .lbl { color: #c05621; }
+    .stat.low { background: #f0fff4; } .stat.low .num { color: #276749; } .stat.low .lbl { color: #276749; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <span class="badge">⚡ Powered by AI</span>
+      <h1>🔍 Contract Risk Scanner</h1>
+      <p>Paste any contract — AI finds the risky clauses before you sign.</p>
+    </div>
+
+    <div class="card">
+      <textarea id="contractText" placeholder="Paste your contract, terms & conditions, or legal document here..."></textarea>
+      <button class="btn-scan" id="analyzeBtn" onclick="analyze()">Scan for Risks →</button>
+      <div class="error" id="errorMsg"></div>
+    </div>
+
+    <div class="loading" id="loadingDiv">
+      <div class="spinner"></div>
+      <p style="color:#666;font-size:14px;">Analyzing your contract with AI...</p>
+    </div>
+
+    <div class="results" id="resultsDiv"></div>
+  </div>
+
+  <script>
+    let currentData = null;
+
+    async function analyze() {
+      const text = document.getElementById('contractText').value.trim();
+      const btn = document.getElementById('analyzeBtn');
+      const loading = document.getElementById('loadingDiv');
+      const results = document.getElementById('resultsDiv');
+      const errorMsg = document.getElementById('errorMsg');
+
+      if (!text) { showError('Please paste some contract text first.'); return; }
+
+      errorMsg.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Analyzing...';
+      loading.style.display = 'block';
+      results.style.display = 'none';
+
+      try {
+        const response = await fetch('/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await response.json();
+        currentData = data;
+        renderResults(data);
+      } catch(err) {
+        showError('Analysis failed. Make sure the server is running.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Scan for Risks →';
+        loading.style.display = 'none';
+      }
+    }
+
+    function showError(msg) {
+      const e = document.getElementById('errorMsg');
+      e.textContent = msg;
+      e.style.display = 'block';
+    }
+
+    function getScoreColor(score) {
+      if (score >= 70) return { stroke: '#e53e3e', bg: '#fff5f5', text: '#c53030' };
+      if (score >= 40) return { stroke: '#dd6b20', bg: '#fffaf0', text: '#c05621' };
+      return { stroke: '#38a169', bg: '#f0fff4', text: '#276749' };
+    }
+
+    function getVerdictStyle(verdict) {
+      if (verdict.includes('DO NOT')) return 'background:#fff5f5;color:#c53030;';
+      if (verdict.includes('REVIEW')) return 'background:#fffaf0;color:#c05621;';
+      return 'background:#f0fff4;color:#276749;';
+    }
+
+    function scoreRing(score) {
+      const c = getScoreColor(score);
+      const r = 38, cx = 50, cy = 50;
+      const circ = 2 * Math.PI * r;
+      const dash = (score / 100) * circ;
+      return `<div class="score-ring">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#eee" stroke-width="8"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c.stroke}" stroke-width="8"
+            stroke-dasharray="${dash} ${circ}" stroke-linecap="round"/>
+        </svg>
+        <div class="score-text">
+          <div class="score-num" style="color:${c.text}">${score}</div>
+          <div class="score-label">/ 100</div>
+        </div>
+      </div>`;
+    }
+
+    async function negotiate(title, desc, index) {
+      const resultDiv = document.getElementById(`neg-${index}`);
+      const btn = document.getElementById(`btn-neg-${index}`);
+      btn.textContent = 'Loading...';
+      btn.disabled = true;
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<strong>Suggested Better Wording</strong>Generating suggestion...';
+
+      try {
+        const response = await fetch('/negotiate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, desc })
+        });
+        const data = await response.json();
+        resultDiv.innerHTML = `<strong>💬 Suggested Better Wording</strong>${data.suggestion}`;
+      } catch(err) {
+        resultDiv.innerHTML = 'Failed to generate suggestion.';
+      } finally {
+        btn.textContent = 'Negotiate';
+        btn.disabled = false;
+      }
+    }
+
+    function renderResults(data) {
+      const c = getScoreColor(data.score);
+      let html = `<div class="card">
+        <div class="score-section">
+          ${scoreRing(data.score)}
+          <div class="score-details">
+            <h2>Risk Score: ${data.score}/100</h2>
+            <p>Analysis complete — ${data.high.length + data.medium.length + data.low.length} clauses reviewed</p>
+            <span class="verdict" style="${getVerdictStyle(data.verdict)}">${data.verdict}</span>
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="stat high"><div class="num">${data.high.length}</div><div class="lbl">High Risk</div></div>
+          <div class="stat medium"><div class="num">${data.medium.length}</div><div class="lbl">Medium Risk</div></div>
+          <div class="stat low"><div class="num">${data.low.length}</div><div class="lbl">Low Risk</div></div>
+        </div>
+        ${data.summary ? `<div class="summary-box"><strong>📋 Plain English Summary</strong>${data.summary}</div>` : ''}
+      </div>`;
+
+      let itemIndex = 0;
+
+      if (data.high.length > 0) {
+        html += `<div class="section-label" style="color:#c53030;">🔴 High Risk Clauses</div>`;
+        data.high.forEach(i => {
+          html += `<div class="risk-item high">
+            <div class="risk-header">
+              <div class="risk-title">${i.title}</div>
+              <button class="btn-negotiate" id="btn-neg-${itemIndex}" onclick="negotiate('${i.title.replace(/'/g,"\\'")}','${i.desc.replace(/'/g,"\\'")}',${itemIndex})">Negotiate</button>
+            </div>
+            <div class="risk-desc">${i.desc}</div>
+            <div class="negotiate-result" id="neg-${itemIndex}"></div>
+          </div>`;
+          itemIndex++;
+        });
+      }
+
+      if (data.medium.length > 0) {
+        html += `<div class="section-label" style="color:#c05621;">🟡 Medium Risk Clauses</div>`;
+        data.medium.forEach(i => {
+          html += `<div class="risk-item medium">
+            <div class="risk-header">
+              <div class="risk-title">${i.title}</div>
+              <button class="btn-negotiate" id="btn-neg-${itemIndex}" onclick="negotiate('${i.title.replace(/'/g,"\\'")}','${i.desc.replace(/'/g,"\\'")}',${itemIndex})">Negotiate</button>
+            </div>
+            <div class="risk-desc">${i.desc}</div>
+            <div class="negotiate-result" id="neg-${itemIndex}"></div>
+          </div>`;
+          itemIndex++;
+        });
+      }
+
+      if (data.low.length > 0) {
+        html += `<div class="section-label" style="color:#276749;">🟢 Low Risk Clauses</div>`;
+        data.low.forEach(i => {
+          html += `<div class="risk-item low">
+            <div class="risk-header"><div class="risk-title">${i.title}</div></div>
+            <div class="risk-desc">${i.desc}</div>
+          </div>`;
+        });
+      }
+
+      if (data.suggestion) {
+        html += `<div class="suggestion"><strong>💡 Suggested Action</strong>${data.suggestion}</div>`;
+      }
+
+      const resultsDiv = document.getElementById('resultsDiv');
+      resultsDiv.innerHTML = html;
+      resultsDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
